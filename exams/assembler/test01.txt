@@ -1,0 +1,13 @@
+; parameters
+  LDC R0 10    ; R0 = parameter/counter
+; initialization 
+  LDC R1 1     ; R1 = 1 (constant)
+  LDC R2 1     ; R2 = result
+; loop
+  LE  R0 R1    ; counter <= 1 ?
+  JF  3        ; goto output
+  MUL R2 R0    ; R2 *= R0
+  SUB R0 R1    ; R0 -= 1
+  JMP -5       ; goto test
+; output
+  OUT R2       ; print result

@@ -1,0 +1,25 @@
+; parameters
+  LDC R0 10    ; input - count of numbers
+; initialization
+  LDC R1 1
+  LDC R2 10    ; the first index of the 'array'
+  LDC R3 0     ; number counter
+  MOV R4 R2    ; index counter
+; fill-in the array
+  LE  R3 R0    ; counter <= input ?
+  JNF 4        ; if not goto output
+  ST  R4 R3    ; [R4]=R3
+  ADD R3 R1
+  ADD R4 R1
+  JMP -6       ; goto test
+; output
+  LDC R3 0     ; reinitialization
+  MOV R4 R2
+  LE  R3 R0    ; counter <= input ?
+  JNF 5        ; if not goto end
+  LD  R5 R4    ; R5=[R4]
+  OUT R5       ; print
+  ADD R3 R1
+  ADD R4 R1
+  JMP -7
+; end
