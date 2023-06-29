@@ -1,0 +1,1 @@
+cteni a interpritace vyrazu
