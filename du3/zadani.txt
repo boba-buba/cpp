@@ -1,0 +1,260 @@
+CZ
+Interval locker
+
+Prázdný soubor řešení (pro odevzdání):
+
+    locker.hpp
+
+Implementace intervalového stromu (automaticky přidaná do testů):
+
+    interval_tree.hpp
+
+Testy (jako v ReCodExu):
+
+    test_1.cpp
+    test_2.cpp
+    test_3.cpp
+    test_4.cpp
+    test_5.cpp
+    test_6.cpp
+    test_7.cpp
+    test_8.cpp
+    test_9.cpp
+    test_10.cpp
+
+Pokud používáte Linux nebo WSL, tak by se vám mohl hodit následující soubor:
+
+    Makefile
+
+Motivace
+
+Chceme implementovat zamykací mechanismus na obecné množině intervalů (teoreticky tak velkých, jak dovolenu runtime prostředím).
+
+Běžným použitím by mohlo být například zamykání spojitých podmnožin polí v paralelní aplikaci, abychom zamizili vzniku data races v přístupech jednotlivých vláken aplikace. Přesněji řečeno, chceme zamkout určitou část pole použitím shared locku pro získání čtecích práv nebo použitím exclusive locku pro získání čtecích i zápisových práv.
+
+Pokud dvě vlákna souběžně žádají získání exkluzivního přístupu do dvou intervalů s neprázdným průnikem (a nebo jeden z nich žádá sdílený "shared" přístup), tak nějaké z těchto vláken bude zablokováno dokud zámek reprezentující přístup druhého vlákna není odemčen (= unlocked; buďto explicitně nebo destrukcí objektu).
+
+Navíc chceme dvojici implementovat metod upgrade a downgrade, kterými můžeme mechanismus požádat o změnu přístupových práv. K tomu očekáváme, že jednotlivé zámky budou splňovat tzv. move semantiku, pomocí které lze zařídit přesun vlastnictí přístupových práv na jiný zámek. (tímto původní vlastník o práva přijde; podobně je tomu tak i u metod downgrade, upgrade).
+Implementace
+
+Implementujte třídy shared_lock, exclusive_lock, locker s následujícími veřejnými metodami:
+
+class shared_lock {
+public:
+    shared_lock() noexcept;  // produce invalid object
+
+    shared_lock(const shared_lock&) = delete; // no support for copy
+    shared_lock(shared_lock&&) noexcept; // move, invalidate source object
+    shared_lock& operator=(const shared_lock&) = delete; // no support for copy
+    shared_lock& operator=(shared_lock&&) noexcept; // unlock `*this` (if not invalid), move, invalidate source object
+
+    ~shared_lock(); // unlock (if not invalid), noexcept by default
+
+    void unlock() noexcept;  // unlock (if not invalid), invalidate
+    exclusive_lock upgrade();   // BLOCKING, upgrade to exclusive_lock, invalidate `*this`
+};
+
+class exclusive_lock {
+public:
+    exclusive_lock() noexcept;  // produce invalid object
+
+    exclusive_lock(const exclusive_lock&) = delete; // no support for copy
+    exclusive_lock(exclusive_lock&&) noexcept; // move, invalidate source object
+    exclusive_lock& operator=(const exclusive_lock&) = delete; // no support for copy
+    exclusive_lock& operator=(exclusive_lock&&) noexcept; // unlock `*this` (if not invalid), move, invalidate source object
+
+    ~exclusive_lock(); // unlock (if not invalid), noexcept by default
+
+    void unlock() noexcept;  // unlock (if not invalid), invalidate
+    shared_lock downgrade() noexcept;   // downgrade to shared_lock, invalidate `*this`
+};
+
+
+class locker {
+public:
+    using size_type = std::size_t;
+    locker();
+
+    locker(const locker&) = delete; // no support for copy
+    locker(locker&&) = delete; // no support for move
+    locker& operator=(const locker&) = delete; // no support for copy
+    locker& operator=(locker&&) = delete; // no support for move
+
+    ~locker();  // BLOCKING, wait until all locks are removed
+
+    shared_lock lock_shared(size_type b, size_type e);  // BLOCKING, create a shared_lock
+    exclusive_lock lock_exclusive(size_type b, size_type e);    // BLOCKING, create an exclusive_lock
+};
+
+Věnujte extra jednotek pozornosti specifikované move semantice. Měli byste být obeznámeni s podobnou semantikou například u std::unique_ptr nebo různých standardních kontejnerů. Zároveň si povšimněte, že shared_lock a exclusive_lock mají velice podobné API.
+
+Metody označeny BLOCKING značí, že volající vlákno je v dané metodě zablokováno, dokud žádost nemůže být vykonána (detaily v další sekci).
+Požadované chování
+
+Každý zámek je ztotožňován s určitým intervalem [b, e). Dva intervaly [b1, e1), [b2, e2) se protínají, pokud platí b1 < e2 && b2 < e1 (každý z intervalů začíná dříve než druhý končí). Dva zámky ná protínajících se intervalech mohou souběžně existovat pouze pokud jsou oba typu shared_lock. V každé jiné situaci výroba jednoho zablokuje volatele dokud daný zámek nemůže bezpečně existovat.
+
+Metody lock_... a upgrade nevrátí hodnotu dokud držitelé konfliktních zámků (viz přímo výše) jsou odemčeny svými držitely.
+
+Destruktor ~locker se nevrátí dokud nejsou všechny zámky odemčeny svými držitely. Žádné nové zámky ani povýšení (= upgrade) po zavolání destruktoru nesmějí nastat (není vyžadována žádná diagnostika ani protekce).
+
+Object locker musí být "thread-safe" (lock_... metody mohou být souběžně volány v různých vláknech). Každý ..._lock objekt je používán vždy jen jedním vláknem a tedy zámek samotný nemusí být thread-safe.
+Intervalový strom
+
+Ve vaší implementaci můžete volitelně používat námi připravenou strukturu interval_tree<ValueType>. Tato struktura implemetuje vyhledávání a detekci průniků intervalů. Struktura implementuje API, které by mohlo být očekáváno od běžného asociativního kontejneru:
+
+    emplace(interval, Args&&...): in-place konstrukce prvku asociovaného se zadaným intervalem a argumenty přesměrovanými (= forwarded) do konstruktoru ValueType. Vrátí std::pair<node*, bool>; kde první hodnota je ukazatel na prvek asociovaný se zadaným intervalem (nikdy není .end()) a druhá hodnota značí, zda byla provedena inserce či nikoli. Žádná ValueType není touto metodou vyrobena, pokud inserce nenastala (podobně jako u standardního try_emplace).
+    erase(interval): odebere prvek asociovaný se zadaným intervalem; NESELŽE pokud prvek neexistuje
+    find(interval): vrátí ukazatel na prvek asociovaný se zadaným intervalem. Vrátí end(), pokud žádný takový neexistuje.
+
+K tomuto obecnému API navíc poskytuje:
+
+    get_overlap(interval, ignore_identity = false): vrátí ukazatel na nějaký prvek asociovaný s intervalem, který se protíná se zadaným. Vrátí .end(), pokud žádný takový neexistuje. Chování je podobné metodě find().
+    find_min(): vrátí ukazatel na prvek asociovaný s lexikograficky minimálním intervalem. Vrátí end(), pokud žádný takový neexistuje. Chová se podobně jako metoda begin() běžného std::map.
+    get_overlaps(interval, ignore_identity = false): vrátí vektor všech prvků asociovaných s intervaly pronikajícími zadaným.
+
+Tato struktura předpokládá, že ValueType je "move-constructible" a "move-assignable" a že tyto "move"y neprodukují pozorovatelné side-efekty. Zároveň berte na vědomí, že tato struktura není thread-safe.
+
+Není požadováno používat strukturu interval_tree ani využívat její celé API, ale pokud používáte jakoukoli alternativu (preferovaně poskládanou z std:: objektů), tak by časová složitost insercí, odstraňování a jakýchkoli vyhledávání neměla převyšovat logaritmickou (O(log n); kde n je počet přidaných a neodebraných prvků) a, u get_overlaps, lineární vzhledem k počtu průniků (O(log n * k), kde k je počet průniků). Navíc, každá taková implementace by měla být řádně zdokumentována a doplněna vysvětelním odhadů časových složitostí.
+
+Struktura je definována v hlavičkovém souboru interval_tree.hpp.
+
+(Je to AVL strom s lexikograficky uspořádanými klíči a přidanou "bookkeeping" informací, maximálními konci intervalů, pro efektivnější vyhledávání.)
+Doplňkové informace
+
+Chování dvou žádostí o sdílené "shared" zámky na protínajících se intervalech by se nemělo výrazně měnit od situace, kdy se neprotínaji. Pokud se protínají s exklusivním zámkem, měl by čekat na odemčení obou.
+
+Řešení by nemělo předpokládat existenci pouze jednoho objektu locker. Jakékoli průniky mezi intervaly spravovanými různými locker objekty jsou ignorovány. Jinými slovy, různé locker objekty nesdílí stav.
+
+Jakékoli zablokované volání by mělo být odblokováno hned, jak neexistuje žádná kolize - pokud dvě zablokovaná volání lock... nebo upgrade nekolidují zároveň i spolu. Pak by tedy měly být odblokovávány postupně: každé, pokud zrovna může. Mohlo by být zajímavé zde implementovat nějakou prioritizaci, ale to není požadováno.
+EN:
+Interval locker
+
+Empty solution file you are expected to hand in:
+
+    locker.hpp
+
+Interval tree implementation (automatically supplied to tests):
+
+    interval_tree.hpp
+
+Tests (as used by ReCodEx):
+
+    test_1.cpp
+    test_2.cpp
+    test_3.cpp
+    test_4.cpp
+    test_5.cpp
+    test_6.cpp
+    test_7.cpp
+    test_8.cpp
+    test_9.cpp
+    test_10.cpp
+
+If you use Linux or WSL, you might find the following file quite useful:
+
+    Makefile
+
+Motivation
+
+We are interested in implementing a locking mechanism on a general set of intervals (theoretically as big as allowed by the runtime environment).
+
+A typical use case might be locking contiguous subsets of an array in a parallel application to avoid possible data races between the application's threads' accesses to the array. More specifically, in this use case, we would like to lock a certain contiguous sub-array with a shared lock for read-only access rights or with an exclusive lock for read-write access rights to the sub-array.
+
+In practice, if two threads concurrently request exclusive access to two overlapping intervals (or one of them requests shared access), one will be blocked until the lock representing the access rights of the other is unlocked (either explicitly, or by the destruction of the associated lock).
+
+Furthermore, we want to upgrade or downgrade the lock if we want to change our access rights. We also expect the locks to implement move semantics to allow transferring ownership onto a different lock (such that the original loses the ownership; this also happens in the case of upgrades and downgrades).
+Implementation
+
+Implement classes shared_lock, exclusive_lock and locker with the following public methods:
+
+class shared_lock {
+public:
+    shared_lock() noexcept;  // produce invalid object
+
+    shared_lock(const shared_lock&) = delete; // no support for copy
+    shared_lock(shared_lock&&) noexcept; // move, invalidate source object
+    shared_lock& operator=(const shared_lock&) = delete; // no support for copy
+    shared_lock& operator=(shared_lock&&) noexcept; // unlock `*this` (if not invalid), move, invalidate source object
+
+    ~shared_lock(); // unlock (if not invalid), noexcept by default
+
+    void unlock() noexcept;  // unlock (if not invalid), invalidate
+    exclusive_lock upgrade();   // BLOCKING, upgrade to exclusive_lock, invalidate `*this`
+};
+
+class exclusive_lock {
+public:
+    exclusive_lock() noexcept;  // produce invalid object
+
+    exclusive_lock(const exclusive_lock&) = delete; // no support for copy
+    exclusive_lock(exclusive_lock&&) noexcept; // move, invalidate source object
+    exclusive_lock& operator=(const exclusive_lock&) = delete; // no support for copy
+    exclusive_lock& operator=(exclusive_lock&&) noexcept; // unlock `*this` (if not invalid), move, invalidate source object
+
+    ~exclusive_lock(); // unlock (if not invalid), noexcept by default
+
+    void unlock() noexcept;  // unlock (if not invalid), invalidate
+    shared_lock downgrade() noexcept;   // downgrade to shared_lock, invalidate `*this`
+};
+
+
+class locker {
+public:
+    using size_type = std::size_t;
+    locker();
+
+    locker(const locker&) = delete; // no support for copy
+    locker(locker&&) = delete; // no support for move
+    locker& operator=(const locker&) = delete; // no support for copy
+    locker& operator=(locker&&) = delete; // no support for move
+
+    ~locker();  // BLOCKING, wait until all locks are removed
+
+    shared_lock lock_shared(size_type b, size_type e);  // BLOCKING, create a shared_lock
+    exclusive_lock lock_exclusive(size_type b, size_type e);    // BLOCKING, create an exclusive_lock
+};
+
+Pay extra attention to the specified moved semantics. You should be familiar with similar semantics in, for example, std::unique_ptr or various standard containers. Also, notice that the two lock classes have a similar API.
+
+The methods marked BLOCKING signify that the calling thread is blocked inside the given function by passively waiting until the request can be fulfilled (see next section for details).
+Requested behavior
+
+Each lock is associated with an interval [b, e). Two intervals [b1, e1), [b2, e2] overlap iff b1 < e2 && b2 < e1 (each has to begin before the other ends). Two locks on overlapping intervals can exist if and only if both are shared_locks. In any other case, the creation of one blocks the caller until the lock can safely exist.
+
+lock_... and upgrade functions will not return until all conflicting locks (see just above) are unlocked by their holders.
+
+The ~locker destructor will not return until all locks are unlocked by their holders. No new locks or upgrades shall be requested (from other threads) after invoking the destructor; no diagnostics or protection is required.
+
+There are no timeouts and no deadlock prevention/detection. (Deadlock detection is impossible because there are no defined owners (transactions/threads/...) of the locks.)
+
+locker object must be thread-safe (lock_... functions may be called concurrently from many threads). Each ..._lock object will be used by only one thread; therefore, the object alone does not have to be thread-safe.
+Interval Tree
+
+In your implementation, you can optionally use our interval_tree<ValueType> data structure, which implements lookup and overlap detection on the intervals. It implements an API that could be expected from a general associative container:
+
+    emplace(interval, Args&&...): in-place construct a node associated with the specified interval key, forwards the arguments into the constructor of ValueType. Returns std::pair<node*, bool>; where .first is the pointer to the node associated with the given interval (it is never .end()), and .second is true if the insertion succeeds, otherwise, it is false. Does not construct ValueType unless insertion is certain to happen (like a standard try_emplace).
+    erase(interval): removes the node associated with the given interval. Does NOT fail if the node doesn't exist.
+    find(interval): returns a pointer to the node associated with the given interval. If no such node exists, returns end().
+
+On top of this general API, it implements:
+
+    get_overlap(interval, ignore_identity = false): returns a pointer to a node that is associated with an interval that overlaps with the argument interval. Returns end() if no such element exists. It is similar to find.
+    find_min(): returns a pointer to a node that is associated with the lexicographically minimal interval. Returns end() if no such element exists. It is similar to begin() on regular std::maps.
+    get_overlaps(interval, ignore_identity = false): returns a vector of pointers to all nodes that are associated with any interval overlapping with the argument interval.
+
+Note that interval_tree assumes the ValueType is move-constructible and move-assignable and that the moves do not produce any observable side effects. Also, note that this structure is not thread-safe.
+
+You are not required to use interval_tree nor to use its whole API, but if you use any alternative (preferably composed from std:: objects), the asymptotic time complexity shouldn't be worse than logarithmic for insertions, removals or any lookups (O(log n); where n is the number of inserted, non-removed elements) and, in case of get_overlaps, also linearly co-dependent on the number of overlaps (O(log n * k), where k is the number of overlaps). Furthermore, any such implementation should be accompanied by documentation that explains the time complexity estimation.
+
+The structure is defined in the interval_tree.hpp header.
+
+(The interval_tree structure is an AVL tree with lexicographically ordered keys and extra bookkeeping information, maximum interval end-points, for efficient overlap lookup.)
+Extra remarks
+
+If we request two separate shared locks on the same interval, the behavior shouldn't differ from a situation where they generally overlap: if an exclusive lock overlaps with both of them, it should wait for both of them to be unlocked.
+
+The solution shouldn't assume that just one locker object exists - any overlaps between intervals associated with locks generated by different lockers should be ignored. In other words, the different locker objects do not share any state.
+
+Any blocked call should be unblocked as soon as there is no collision - unless two or more blocked lock... or upgrade functions collide together as well, then they should get unlocked (one by one) if possible at the given moment. It might be interesting to implement some prioritization, but that is not required.
+
+Make sure that upgrade and downgrade do not fully unlock during the action (especially in upgrade; as it is blocking). For example, calling upgrade is NOT equivalent to unlocking the shared lock and subsequently creating an exclusive lock on the same interval. Calling downgrade on an exclusive lock should also unblock all blocked shared locks (unless they are still blocked by something else).
