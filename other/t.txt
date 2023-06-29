@@ -1,0 +1,245 @@
+#include <iostream>
+#include <iomanip>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <sstream>
+#include <stdexcept>
+#include <variant>
+#include <unordered_map>
+#include <deque>
+#include <regex>
+#include <algorithm>
+
+namespace processor {
+
+	using t = std::variant<std::string, int>;
+	
+
+	struct S {
+		std::size_t numberParam;
+		std::vector<t> rhs;
+	};
+	std::unordered_map<std::string, S> m;
+	using line_t = std::string;
+
+	class parser {
+	public:
+		parser(std::istream* isp):isp_(isp) {};
+		int parse(std::istream& isp_)
+		{
+			for (;;)
+			{
+				std::string line;
+				std::getline(isp_, line);
+
+				if (isp_.fail())
+				{
+					if (isp_.eof()) break;
+					std::cout << "Cannot read from the file" << std::endl;
+					return 8;
+
+				}
+				if (line.find('=') != std::string::npos) {
+					//std::cout << line << std::endl;
+					mocro_create(line);					
+				}
+				else
+				{
+					print_line(line);
+					std::cout << line << std::endl;
+				}
+			}
+			//std::cout << m.size() << std::endl;
+		}
+		int static convert(const std::string& num)
+		{
+			int f = 0;
+			
+			for (std::size_t i = 0; i < num.size(); ++i)
+			{
+				if (!isdigit(num[i])) throw std::runtime_error("Incorrect format of the bounds of an interval");
+				int digit = (int)num[i] - 48;
+				f = f * 10 + digit;
+				//std::cout << f << std::endl;
+			}
+			
+			return f;
+
+		}		
+		
+		void mocro_create(std::string& l)
+		{
+			std::vector<t> right_side;
+			std::string name = l.substr(0, l.find('='));
+			name = std::regex_replace(name, std::regex("^ +| +$|( ) +"), "$1");
+			int maximum = 0;
+			std::string cell = "";
+
+
+			for (std::size_t i = l.find('=')+1; i < l.size(); ++i)
+			{
+				//std::cout << l[i] << std::endl;
+
+				if (l[i] != ' ')
+				{
+					cell += l[i];	
+					//std::cout << cell << " "<< l[i] << std::endl;
+				}
+				if (((l[i] == ' ' || (i == (l.size() - 1))) && cell.size() != 0))
+				{	
+					//std::cout << cell << std::endl;
+					
+					if (isdigit(cell[0]))
+					{
+
+						int param = convert(cell);
+						maximum = std::max(maximum, param);
+						//int n = convert(cell);
+						//std::cout << n << std::endl;
+						right_side.emplace_back(param);
+					}
+					else 
+					{
+						right_side.emplace_back(cell);
+						
+					}
+					cell = "";
+					
+				}
+			}
+			//std::cout << name << " " << right_side.size() << std::endl;
+			struct S s;
+			s.numberParam = maximum;
+			s.rhs = std::move(right_side);
+			m.emplace(name, s);
+		}
+
+		void listing_map(std::unordered_map<std::string, S>& const map)
+		{
+			for (auto x : map)
+			{
+				std::cout << x.first << std::endl;
+				std::cout << x.second.numberParam << std::endl;
+			}
+
+		}
+	
+		void print_line(std::string& l)
+		{
+			//listing_map(m);
+			std::deque<std::string> pl;
+			std::string cell = "";
+			for (std::size_t i = 0; i < l.size(); ++i)
+			{
+				
+				if (l[i] != ' ')
+				{
+					cell += l[i];
+				}
+				if (((l[i] == ' ' || (i == (l.size() - 1))) && cell.size() != 0))
+				{
+					pl.push_back(cell);
+					cell = "";
+				}
+			}
+
+			while (pl.size() > 0)
+			{
+				
+				if (m.find(pl[0]) != m.end())
+				{
+					std::vector<std::string> parameters;
+					std::string name = pl[0];
+					pl.pop_front();
+
+					for (std::size_t i = 0; i < m[name].numberParam; ++i)
+					{
+						parameters.emplace_back(pl[0]);
+						pl.pop_front();
+					}
+					std::deque<std::string> definition;
+					//std::cout << "right side size" << m[name].rhs.size() << std::endl;
+					for (std::size_t i = 0; i < m[name].rhs.size(); ++i)
+					{
+						std::cout << "type of param " << typeid(m[name].rhs[i]).name() << std::endl;
+						if (typeid(m[name].rhs[i])==typeid(0)) // cant find if int or string
+						{ 
+							std::cout << "here" << std::endl;
+							int index = std::get<int>(m[name].rhs[i]) - 1;
+							definition.emplace_back(parameters[index]);
+						}
+						else
+						{
+							std::string par = std::get<std::string>(m[name].rhs[i]);
+							definition.emplace_back(par);
+						}
+					}
+					for (std::size_t i = definition.size() - 1; i >= 0; --i)
+					{
+						pl.push_front(definition[i]);
+					}
+				}
+				else 
+				{ 
+					std::cout << pl[0] + " ";
+					pl.pop_front();
+				}
+			}
+			std::cout << std::endl;
+
+		}
+	private:
+			std::istream& is()
+			{
+				return *isp_;
+			}
+
+			std::istream* isp_;
+			std::vector<line_t> lines_;
+
+
+		
+	};
+
+
+
+}
+
+int main(int argc, char** argv)
+{
+
+	try {
+		if (argc < 2)
+		{
+			throw std::runtime_error("Missing file name");
+		}
+
+		std::string filename = argv[1];
+
+		// read the file:
+		{
+			std::ifstream is(filename);
+
+			if (!is.good())
+			{
+				throw std::runtime_error("Cannot open file \"" + filename + "\"");
+			}
+			processor::parser p(&is);
+			p.parse(is);
+			 
+		}
+
+		return 0;
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << e.what() << std::endl;
+	}
+	catch (...)
+	{
+		std::cerr << "Unknown exception" << std::endl;
+	}
+	return 8;
+
+}

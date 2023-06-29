@@ -1,0 +1,83 @@
+#include <iostream>
+#include <iomanip>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <sstream>;
+
+//using namespace std;
+
+int main(int argc, char** argv)
+{
+	for (int i = 0; i < argc; ++i) //argc je typu int, takze  v poradku
+	{
+		std::cout << i << ": \"" << argv[i] << "\"" << std::endl;
+	}
+
+	if (argc < 2)
+	{
+		std::cout << "Missing file name" << std::endl;
+		return 8;
+	}
+
+	std::string filename = argv[1];
+
+	std::ifstream is(filename);
+
+	if (!is.good())
+	{
+		std::cout << "Cannot open file \"" << filename << "\"" << std::endl;
+		return 8;
+	}
+	//v.push_back(vector<string>());
+	//v.emplace_back();
+	//v[i][j]
+	//v.size   v[i].size()
+	//for (  i = 0; i < v.size(); ++i) std::size .... 64 bit int ... 32 bit .. deklareace i
+	// i musi byt typu std::size_t
+	//std::ptrdiff_t ... znamenkova cisla
+	
+	std::vector < std::vector < std::string >> v;
+
+	std::vector<std::string> v2;
+
+	for (;;)
+	{		
+		std::string line;
+		std::vector<std::string> l;
+		std::getline(is, line);
+		std::stringstream ss(line);
+		
+		if (is.fail())
+		{
+			if (is.eof())
+				break;
+			std::cout << "Cannot read from the file" << std::endl;
+			return 8;
+		}
+		
+		while (ss.good()) 
+		{
+			std::string sub;
+			std::getline(ss, sub, ',');
+			l.push_back(sub);
+		}
+
+		v.emplace_back(l);
+	}
+
+	for (std::size_t i = 0; i < v.size(); ++i)
+	{
+		for (std::size_t j = 0; j < v[i].size(); ++j)
+		{
+			std::cout << v[i][j];
+			std::cout << " ";
+		}
+		std::cout << std::endl;
+		
+	}
+
+	return 0;
+}
+
+//////////////////////////////////11.10/////////////////////////////////////////
