@@ -1,0 +1,8 @@
+$value = 98
+print $value
+$a = cell 1 2
+$b = cell $value $a
+print 76
+$c = right $b
+print $c
+print $b

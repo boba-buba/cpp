@@ -1,0 +1,4 @@
+foo x = x
+loo x = x x
+goo x y = y x
+hoo a b c = a a a
