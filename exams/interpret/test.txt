@@ -1,0 +1,13 @@
+seti a 98
+sets b asdf
+seti c 2
+add d a b
+echo d
+add e a c
+echo e
+echo a
+seta f 87
+sets 4
+seti 8
+sets x 82
+echo x
