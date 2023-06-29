@@ -1,0 +1,10 @@
+; factorial
+PAR=10
+COUNTER=1
+FAC=1           ; result
+; loop
+FAC = FAC * COUNTER
+COUNTER=COUNTER+1
+TMP = PAR - COUNTER
+TMP ? 5         ; if( PAR != COUNTER) goto loop
+; end

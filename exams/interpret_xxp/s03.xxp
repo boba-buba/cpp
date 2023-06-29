@@ -1,0 +1,27 @@
+; indirect
+    goto = 1
+    goto ? 20
+; case 0
+    jmp = 2
+    acc = acc + 3
+    goto ? 23
+; case 1
+    jmp = 3
+    acc = acc - 1
+    goto ? 23
+; case 2
+    jmp = 1
+    acc = acc * 7
+    goto ? 23
+; case 3
+    jmp = 0     ; just for fun
+    acc = acc / 4
+    goto ? 27
+;;;;;;;;;;;;;;;;;;;; main 20
+    acc = 0;
+    jmp = 0
+;;;;;;;;;;;;;;;;;;;; loop 23
+    jmp = jmp * 4
+    jmp = jmp + 3
+    goto ? jmp
+;;;;;;;;;;;;;;;;;;;; end 27

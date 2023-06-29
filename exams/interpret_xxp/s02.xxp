@@ -1,0 +1,14 @@
+; fibonacci
+	PAR=10
+	COUNTER=2
+	FIRST=1
+	SECOND=1
+	RESULT=0
+; loop
+    RESULT = FIRST + SECOND;
+    FIRST = SECOND;
+    SECOND = RESULT;
+    COUNTER=COUNTER+1
+    TMP = PAR - COUNTER
+    TMP?7         ; if( PAR != COUNTER) goto loop
+; end
