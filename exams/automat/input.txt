@@ -1,0 +1,1 @@
+DFA1.txt -i Inputs1.txt -n  NFA2.txt NFA3.txt

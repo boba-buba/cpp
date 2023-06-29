@@ -1,0 +1,6 @@
+NFA3
+12
+<-> AA | AA BB | AA
+<- BB | | BB CC
+
+CC | CC |
