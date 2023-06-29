@@ -1,0 +1,29 @@
+let sub = 1
+sub
+sub 1 2
+
+nonExisting
+let neverAssignedTo = add nonExisting 1
+neverAssignedTo
+
+add
+add 1
+add 1 2 3
+
+let missing equal sign
+let missingRightSide
+
+let `#@%$@__funky_variable_name_''15443 = add 1 1
+`#@%$@__funky_variable_name_''15443
+
+	let   nonStandardSpacing		=	add 1 2
+	nonStandardSpacing   
+
+div 1 0
+
+bind2 div 0
+let delayedDivByZero = bind2 div 0
+4
+let moreDelayedDivByZero = join delayedDivByZero add
+5
+moreDelayedDivByZero 1 1

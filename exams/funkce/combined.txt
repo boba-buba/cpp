@@ -1,0 +1,31 @@
+bind1 sub 0
+let neg = bind1 sub 0
+neg -2
+
+bind2 div 2
+let half = bind2 div 2
+half 6
+
+dupl mul
+let square = dupl mul
+square 2
+
+join half add
+let avg = join half add
+avg 2 8
+
+let distSquared = join square sub
+distSquared 5 9
+
+join half distSquared
+let distSquaredHalved = join half distSquared
+distSquaredHalved 5 9
+
+bind1 join half
+let joinHalf = bind1 join half
+joinHalf distSquared
+let anotherDistSquaredHalved = joinHalf distSquared
+anotherDistSquaredHalved 5 9
+
+let id = bind2 add 0
+id 8

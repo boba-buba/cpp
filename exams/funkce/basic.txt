@@ -1,0 +1,14 @@
+1
+let two = 2
+two
+
+add 1 2
+add 2 two
+let four = add 2 two
+
+let five = sub 9 four
+five
+
+mul 2 3
+
+div 21 3
